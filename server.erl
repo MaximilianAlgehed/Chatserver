@@ -51,23 +51,41 @@ client_disconnect(Broker) -> Broker ! disconnect.
 
 %Listen for complete messages from the socket
 client_listen(Sock, CBroker) -> 
-    case client_get_message(Sock, []) of
-        {ok, Msg} -> client_recv(Msg, CBroker),
-                     client_listen(Sock, CBroker);
+    client_listen_loop(Sock, CBroker, []).
+
+%Loop the listen
+client_listen_loop(Sock, CBroker, Lst) ->
+    case client_get_message(Sock, Lst) of
+        {ok, Msg, Cont} -> client_recv(Msg, CBroker),
+                           client_listen_loop(Sock, CBroker, Cont);
 
         error     -> client_disconnect(CBroker)
     end.
 
 %Listen on a socket untill a 0 byte is received
 client_get_message(Sock, Bytes) ->
-    case gen_tcp:recv(Sock, 0) of
-        {ok, Data} -> case lists:any(fun(X) -> X == 0 end, binary:bin_to_list(Data)) of
-                          true  -> {ok, Bytes ++ binary:bin_to_list(Data)};
-                          false -> client_get_message(Sock, Bytes ++ binary:bin_to_list(Data))
-                      end;
+    case lists:any(fun(X) -> X == 0 end, Bytes) of
+        true -> get_message(Bytes);
+        false -> case gen_tcp:recv(Sock, 0) of
+                    {ok, Data} -> Msg = Bytes ++ binary:bin_to_list(Data),
+                                  case lists:any(fun(X) -> X == 0 end, Msg) of
+                                      true  -> get_message(Msg);
+                                      false -> client_get_message(Sock, Msg)
+                                  end;
 
-        {error, _} -> error
+                    {error, _} -> error
+                  end
     end.
+
+%Get message
+get_message(Bytes) ->
+    {ok,
+     lists:takewhile(fun(X) -> X /= 0 end, Bytes) ++ [0],
+     lists:dropwhile(
+       fun(X) ->
+               X == 0 end,
+       (lists:dropwhile(fun(X) -> X /= 0 end, Bytes)))
+    }. 
 
 %Start a client process
 start_client(Sock, Broker) ->
