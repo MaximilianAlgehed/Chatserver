@@ -11,7 +11,8 @@ broker(Clients)  ->
         {connect, Pid}    -> io:format("Client at ~p connected~n", [Pid]),
                              broker([Pid|Clients]);
 
-        {broadcast, Msg}  -> lists:map(fun(Pid) -> Pid ! {send, Msg} end, Clients),
+        {broadcast, Msg}  -> io:format("Message: ~p~n", [Msg]),
+                             lists:map(fun(Pid) -> Pid ! {send, Msg} end, Clients),
                              broker(Clients)
     end.
 
