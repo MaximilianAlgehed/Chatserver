@@ -1,12 +1,18 @@
 import sys
+import json
 import curses
 import socket
 from threading import Lock, Thread
 
 prints_lock = Lock()
 
+#Read the settings file
+config_file = open("config", 'r')
+config = json.loads(config_file.read());
+config_file.close()
+
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect(("localhost", 5678))
+s.connect((config["ServerIP"], config["ServerPort"]))
 
 screen = curses.initscr()
 
