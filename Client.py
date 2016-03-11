@@ -29,7 +29,7 @@ msgS = ""
 
 def sendMsg(msg):
     global s
-    s.send(msg+"\0")
+    s.send(config["UserName"]+"> "+msg+"\0")
 
 def handleInput():
     global name
