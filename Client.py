@@ -3,7 +3,10 @@ import sys
 import json
 import curses
 import socket
+import locale
 from threading import Lock, Thread
+
+locale.setlocale(locale.LC_ALL, '')
 
 prints_lock = Lock()
 
@@ -30,7 +33,7 @@ msgS = ""
 
 def sendMsg(msg):
     global s
-    s.send(config["UserName"]+"> "+msg+"\0")
+    s.send(config["UserName"].encode('Latin-1')+"> ".encode('Latin-1')+msg.encode('Latin-1')+"\0".encode('Latin-1'))
 
 def handleInput():
     global name
@@ -48,13 +51,10 @@ def handleInput():
         msgS = msgS[:len(msgS)-1]
         return True
 
-    if c not in range(128):
-        return False
-
-    if str(unichr(c)) == "\n":
+    if unicode(unichr(c)) == u"\n":
         printQ = True
     else:
-        msgS += str(unichr(c))
+        msgS += unicode(unichr(c)) 
 
     if printQ:
         if not msgS == "":
@@ -71,20 +71,18 @@ def bgRead():
     global prints_lock
     global update
 
-    try:
-        recvd = ""
-        while True:
-            ss = s.recv(1)
-            if ss == "\0":
-                prints_lock.acquire()
-                prints = prints + [recvd]
-                recvd = ""
-                update = True
-                prints_lock.release()
-            else:
-                recvd = recvd + ss
-    except e:
-        thread.exit(1)
+    recvd = ""
+    while True:
+        ss = s.recv(1)
+        ss = ss.decode('Latin-1')
+        if ss == "\0".encode('Latin-1'):
+            prints_lock.acquire()
+            prints = prints + [recvd]
+            recvd = ""
+            update = True
+            prints_lock.release()
+        else:
+            recvd = recvd + ss
 
 t = Thread(target=bgRead)
 t.daemon = True
@@ -112,11 +110,11 @@ while True:
             screen.clear()
 
             while posY >= 0:
-                screen.addstr(posY, 0, prints[msgIndex])
+                screen.addstr(posY, 0, prints[msgIndex].encode('Latin-1'))
                 posY -= 1
                 msgIndex -= 1
 
-            screen.addstr(dims[0]-2, 0, msgS)
+            screen.addstr(dims[0]-2, 0, msgS.encode('Latin-1'))
         update = False
         fst = False
 
