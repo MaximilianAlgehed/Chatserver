@@ -1,29 +1,33 @@
-from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_v1_5
+from Crypto.PublicKey import RSA 
 
-#Generate the keypair
-key = RSA.generate(2048)
+#Read private key from file
+f = open("rsa_priv.pem", 'r')
+private = RSA.importKey(f.read())
+f.close()
 
-#The public key
-public =  key.publickey()
-#The export, to save to file
-public_exp = public.exportKey("PEM")
+#Read public key from file
+f = open("rsa_pub.pem", 'r')
+public = RSA.importKey(f.read())
+f.close()
 
-#The private key
-private = key
-#The export, to save to file
-private_exp = private.exportKey("PEM")
+f = open("message", 'r')
+msg = f.read()
+f.close()
+
+#Decrypt the message from the sender
+print PKCS1_v1_5.new(private).decrypt(msg.decode("string-escape"), 0)
 
 #Encrypt a message
 message = "Hello, world!"
-cypher = "%r"%public.encrypt(message, None)[0]
+#Raw cypherstring
+cypherstr = public.encrypt(message, None)[0]
+
+#Hexified cypher string
+cypher = "\\x"+('\\x'.join(x.encode('hex') for x in cypherstr))
 
 #The cypher text
 print cypher
 
 #The decrypted text
-print private.decrypt(cypher.decode("string-escape")[1:-1])
-
-#Check that there are no zeroes in the cypher texts that we send over the network
-for c in cypher:
-    if c == "\0":
-        print "oops!"
+print private.decrypt(cypher.decode("string-escape"))
