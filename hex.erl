@@ -25,7 +25,7 @@ bin_to_hexstr(Bin) ->
     list_to_hexstr(binary_to_list(Bin)).
 
 hexstr_to_bin(S) ->
-    )list_to_binary(hexstr_to_list(lists:filter(fun(X) -> (X /= 92) and (X /= 120) end, S))).
+    list_to_binary(hexstr_to_list(lists:filter(fun(X) -> (X /= 92) and (X /= 120) end, S))).
 
 hexstr_to_list([X,Y|T]) ->
     [int(X)*16 + int(Y) | hexstr_to_list(T)];
