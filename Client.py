@@ -36,7 +36,7 @@ def encryptWith(message, key):
     return "\\x"+('\\x'.join(x.encode('hex') for x in cypherstr))
 
 def chunkstring(string, length):
-        return (string[0+i:length+i] for i in range(0, len(string), length))
+    return (string[0+i:length+i] for i in range(0, len(string), length))
 
 #Connect to the server
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -73,7 +73,8 @@ def sendMsg(msg):
     global s
     global server_pub
     msg = config["UserName"].encode('Latin-1')+"> ".encode('Latin-1')+msg.encode('Latin-1')
-    s.send(encryptWith(msg, server_pub)+"\0")
+    map(lambda x: s.send(encryptWith(x, server_pub)+"\0"), chunkstring(msg, 10))
+    s.send(encryptWith("\0", server_pub)+"\0")
 
 def handleInput():
     global name
@@ -113,16 +114,22 @@ def bgRead():
     global private_key
 
     recvd = ""
+    recvds = ""
     while True:
         ss = s.recv(1)
         ss = ss.decode('Latin-1')
         if ss == "\0".encode('Latin-1'):
-            prints_lock.acquire()
             recvd = private_key.decrypt(recvd.decode("string-escape"), 0).encode('Latin-1')
-            prints = prints + [recvd]
-            recvd = ""
-            update = True
-            prints_lock.release()
+            if recvd == "\0":
+                prints_lock.acquire()
+                prints = prints + [recvds]
+                recvds = ""
+                recvd = ""
+                update = True
+                prints_lock.release()
+            else:
+                recvds = recvds + recvd
+                recvd = ""
         else:
             recvd = recvd + ss
 

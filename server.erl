@@ -49,10 +49,13 @@ decrypt_with(Msg, PrivateKey) ->
 encrypt_with(Msg, PublicKey) ->
     hex:bin_to_hexstr(public_key:encrypt_public(Msg, PublicKey)).
 
+split_n(N, Lst) -> lists:take(N, Lst)++split_n(N, lists:drop(Lst)).
+
 %Send a message to the socket
 client_send(ClientKey, Sock, Msg) -> 
-    Message = encrypt_with(Msg, ClientKey),
-    gen_tcp:send(Sock, Message++[0]).
+    Messages = lists:map(fun(M) -> encrypt_with(M, ClientKey) end, split_n(10, Msg)),
+    lists:map(fun(M) -> gen_tcp:send(Sock, M++[0]) end, Messages),
+    gen_tcp:send(Sock, encrypt_with([0], ClientKey)++[0]).
 
 %Get a message from the socket
 client_recv(Msg, Broker) -> Broker ! {fromSock, Msg}.
@@ -62,14 +65,17 @@ client_disconnect(Broker) -> Broker ! disconnect.
 
 %Listen for complete messages from the socket
 client_listen(PrivateKey, Sock, CBroker) -> 
-    client_listen_loop(PrivateKey, Sock, CBroker, []).
+    client_listen_loop(PrivateKey, Sock, CBroker, [], []).
 
 %Loop the listen
-client_listen_loop(PrivateKey, Sock, CBroker, Lst) ->
+client_listen_loop(PrivateKey, Sock, CBroker, Lst, Msgs) ->
     case client_get_message(Sock, Lst) of
         {ok, Msg, Cont} -> Message = decrypt_with(Msg, PrivateKey),
-                           client_recv(Message, CBroker),
-                           client_listen_loop(PrivateKey, Sock, CBroker, Cont);
+                           case Message of 
+                                [0] -> client_recv(Msgs, CBroker),
+                                       client_listen_loop(PrivateKey, Sock, CBroker, Cont, []);
+                                _   -> client_listen_loop(PrivateKey, Sock, CBroker, Cont, Msgs ++ Message)
+                            end;
 
         error     -> client_disconnect(CBroker)
     end.
