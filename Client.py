@@ -120,7 +120,7 @@ def bgRead():
         ss = ss.decode('Latin-1')
         if ss == "\0".encode('Latin-1'):
             recvd = private_key.decrypt(recvd.decode("string-escape"), 0).encode('Latin-1')
-            if recvd == "\0":
+            if recvd == "\0".encode('Latin-1'):
                 prints_lock.acquire()
                 prints = prints + [recvds]
                 recvds = ""

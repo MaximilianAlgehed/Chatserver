@@ -31,8 +31,7 @@ broadcast(Msg, Broker)    -> Broker ! {broadcast, Msg}.
 %   broker -> socketSend
 client_broker(ClientKey, Sock, Broker) ->
     receive
-        {send, Msg}     -> io:format("Sending: ~p~n", [Msg]), 
-                           client_send(ClientKey, Sock, Msg);
+        {send, Msg}     -> client_send(ClientKey, Sock, Msg);
 
         {fromSock, Msg} -> broadcast(Msg, Broker);
 
@@ -63,9 +62,7 @@ split_n(N, Lst) -> [binary:list_to_bin(take(N, Lst))|split_n(N, drop(N, Lst))].
 
 %Send a message to the socket
 client_send(ClientKey, Sock, Msg) -> 
-    io:format("~p~n", [wat]),
     Messages = lists:map(fun(M) -> encrypt_with(M, ClientKey) end, split_n(10, binary:bin_to_list(Msg))),
-    io:format("~p~n", [Messages]),
     lists:foreach(fun(M) -> gen_tcp:send(Sock, M++[0]) end, Messages),
     gen_tcp:send(Sock, encrypt_with(<<0>>, ClientKey)++[0]).
 
