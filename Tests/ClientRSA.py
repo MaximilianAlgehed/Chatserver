@@ -1,33 +1,34 @@
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA 
 
-#Read private key from file
-f = open("rsa_priv.pem", 'r')
-private = RSA.importKey(f.read())
-f.close()
+def decrypt(messageFile):
+    
+    #Read private key from file
+    f = open("rsa_priv.pem", 'r')
+    private = RSA.importKey(f.read())
+    f.close() 
 
-#Read public key from file
-f = open("rsa_pub.pem", 'r')
-public = RSA.importKey(f.read())
-f.close()
+    #Read the message from the file
+    f = open(messageFile, 'r')
+    msg = f.read()
+    f.close()
 
-f = open("message", 'r')
-msg = f.read()
-f.close()
+    #Decrypt the message from the sender
+    print PKCS1_v1_5.new(private).decrypt(msg.decode("string-escape"), 0)
 
-#Decrypt the message from the sender
-print PKCS1_v1_5.new(private).decrypt(msg.decode("string-escape"), 0)
+def encrypt(message, messageFile):
 
-#Encrypt a message
-message = "Hello, world!"
-#Raw cypherstring
-cypherstr = public.encrypt(message, None)[0]
+    #Read public key from file
+    f = open("rsa_pub.pem", 'r')
+    public = RSA.importKey(f.read())
+    f.close()
 
-#Hexified cypher string
-cypher = "\\x"+('\\x'.join(x.encode('hex') for x in cypherstr))
+    #Raw cypherstring
+    cypherstr = PKCS1_v1_5.new(public).encrypt(message)
 
-#The cypher text
-print cypher
+    #Hexified cypher string
+    cypher = "\\x"+('\\x'.join(x.encode('hex') for x in cypherstr))
 
-#The decrypted text
-print private.decrypt(cypher.decode("string-escape"))
+    f = open(messageFile, 'w')
+    f.write(cypher)
+    f.close()
