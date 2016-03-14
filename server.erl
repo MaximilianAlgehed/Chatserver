@@ -58,10 +58,11 @@ drop(0, Lst) -> Lst;
 drop(_, []) -> [];
 drop(N, [_|T]) -> drop(N-1, T).
 
-split_n(N, Lst) -> [binary:list_to_bin(take(10, Lst))]++split_n(N, drop(10, Lst)).
+split_n(N, Lst) -> [binary:list_to_bin(take(10, Lst))|split_n(N, drop(10, Lst))].
 
 %Send a message to the socket
 client_send(ClientKey, Sock, Msg) -> 
+    io:format("~p~n", [wat]),
     Messages = lists:map(fun(M) -> encrypt_with(M, ClientKey) end, split_n(10, binary:bin_to_list(Msg))),
     io:format("~p~n", [Messages]),
     lists:foreach(fun(M) -> gen_tcp:send(Sock, M++[0]) end, Messages),
