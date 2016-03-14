@@ -31,7 +31,8 @@ broadcast(Msg, Broker)    -> Broker ! {broadcast, Msg}.
 %   broker -> socketSend
 client_broker(ClientKey, Sock, Broker) ->
     receive
-        {send, Msg}     -> client_send(ClientKey, Sock, Msg);
+        {send, Msg}     -> io:format("Sending: ~p~n", [Msg]), 
+                           client_send(ClientKey, Sock, Msg);
 
         {fromSock, Msg} -> broadcast(Msg, Broker);
 
