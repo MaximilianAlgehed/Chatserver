@@ -49,7 +49,7 @@ decrypt_with(Msg, PrivateKey) ->
 encrypt_with(Msg, PublicKey) ->
     hex:bin_to_hexstr(public_key:encrypt_public(Msg, PublicKey)).
 
-split_n(N, Lst) -> [binary:list_to_bin(lists:take(N, Lst))]++split_n(N, lists:drop(Lst)).
+split_n(N, Lst) -> [binary:list_to_bin(lists:sublist(N, Lst))]++split_n(N, lists:sublist(Lst, N, length(Lst))).
 
 %Send a message to the socket
 client_send(ClientKey, Sock, Msg) -> 
