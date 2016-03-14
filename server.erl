@@ -49,11 +49,11 @@ decrypt_with(Msg, PrivateKey) ->
 encrypt_with(Msg, PublicKey) ->
     hex:bin_to_hexstr(public_key:encrypt_public(Msg, PublicKey)).
 
-split_n(N, Lst) -> lists:take(N, Lst)++split_n(N, lists:drop(Lst)).
+split_n(N, Lst) -> [binary:list_to_bin(lists:take(N, Lst))]++split_n(N, lists:drop(Lst)).
 
 %Send a message to the socket
 client_send(ClientKey, Sock, Msg) -> 
-    Messages = lists:map(fun(M) -> encrypt_with(M, ClientKey) end, split_n(10, Msg)),
+    Messages = lists:map(fun(M) -> encrypt_with(M, ClientKey) end, split_n(10, binary:bin_to_list(Msg))),
     lists:map(fun(M) -> gen_tcp:send(Sock, M++[0]) end, Messages),
     gen_tcp:send(Sock, encrypt_with([0], ClientKey)++[0]).
 
