@@ -1,5 +1,5 @@
 -module(server).
--export([start/1]).
+-export([start/1, split_n/2, take/2, drop/2]).
 
 
 %Broker messages in the chat system
@@ -58,7 +58,8 @@ drop(0, Lst) -> Lst;
 drop(_, []) -> [];
 drop(N, [_|T]) -> drop(N-1, T).
 
-split_n(N, Lst) -> [binary:list_to_bin(take(10, Lst))|split_n(N, drop(10, Lst))].
+split_n(_, []) -> [];
+split_n(N, Lst) -> [binary:list_to_bin(take(N, Lst))|split_n(N, drop(N, Lst))].
 
 %Send a message to the socket
 client_send(ClientKey, Sock, Msg) -> 
