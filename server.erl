@@ -5,14 +5,14 @@
 %Broker messages in the chat system
 broker(Clients)  ->
     receive
-        {disconnect, Pid} -> io:format("Client at ~p disconnected~n", [Pid]),
-                             broker(Clients -- [Pid]);
+        {disconnect, Client} -> io:format("Client at ~p disconnected~n", [Client]),
+                             broker(Clients -- [Client]);
 
-        {connect, Pid}    -> io:format("Client at ~p connected~n", [Pid]),
-                             broker([Pid|Clients]);
+        {connect, Client}    -> io:format("Client at ~p connected~n", [Client]),
+                             broker([Client|Clients]);
 
         {broadcast, Msg}  -> io:format("Message: ~s~n", [Msg]),
-                             lists:map(fun(Pid) -> Pid ! {send, Msg} end, Clients),
+                             lists:map(fun({Pid, _}) -> Pid ! {send, Msg} end, Clients),
                              broker(Clients)
     end.
 
@@ -29,20 +29,30 @@ broadcast(Msg, Broker)    -> Broker ! {broadcast, Msg}.
 %Handles:
 %   socketListener -> broker
 %   broker -> socketSend
-client_broker(Sock, Broker) ->
+client_broker(ClientKey, Sock, Broker) ->
     receive
-        {send, Msg}     -> client_send(Sock, Msg);
+        {send, Msg}     -> client_send(ClientKey, Sock, Msg);
 
         {fromSock, Msg} -> broadcast(Msg, Broker);
 
-        disconnect      -> disconnect(self(), Broker),
+        disconnect      -> disconnect({self(), ClientKey}, Broker),
                            exit(disconnect)
 
     end,
-    client_broker(Sock, Broker).
+    client_broker(ClientKey, Sock, Broker).
+
+%Decrypt a message using the private key
+decrypt_with(Msg, PrivateKey) ->
+    public_key:decrypt_private(hex:hexstr_to_bin(Msg), PrivateKey).
+
+%Encrypt a message using the public key
+encrypt_with(Msg, PublicKey) ->
+    hex:bin_to_hexstr(public_key:encrypt_public(Msg, PublicKey)).
 
 %Send a message to the socket
-client_send(Sock, Msg) -> gen_tcp:send(Sock, Msg).
+client_send(ClientKey, Sock, Msg) -> 
+    Message = encrypt_with(Msg, ClientKey),
+    gen_tcp:send(Sock, Message++[0]).
 
 %Get a message from the socket
 client_recv(Msg, Broker) -> Broker ! {fromSock, Msg}.
@@ -51,14 +61,15 @@ client_recv(Msg, Broker) -> Broker ! {fromSock, Msg}.
 client_disconnect(Broker) -> Broker ! disconnect.
 
 %Listen for complete messages from the socket
-client_listen(Sock, CBroker) -> 
-    client_listen_loop(Sock, CBroker, []).
+client_listen(PrivateKey, Sock, CBroker) -> 
+    client_listen_loop(PrivateKey, Sock, CBroker, []).
 
 %Loop the listen
-client_listen_loop(Sock, CBroker, Lst) ->
+client_listen_loop(PrivateKey, Sock, CBroker, Lst) ->
     case client_get_message(Sock, Lst) of
-        {ok, Msg, Cont} -> client_recv(Msg, CBroker),
-                           client_listen_loop(Sock, CBroker, Cont);
+        {ok, Msg, Cont} -> Message = decrypt_with(Msg, PrivateKey),
+                           client_recv(Message, CBroker),
+                           client_listen_loop(PrivateKey, Sock, CBroker, Cont);
 
         error     -> client_disconnect(CBroker)
     end.
@@ -81,7 +92,7 @@ client_get_message(Sock, Bytes) ->
 %Get message
 get_message(Bytes) ->
     {ok,
-     lists:takewhile(fun(X) -> X /= 0 end, Bytes) ++ [0],
+     lists:takewhile(fun(X) -> X /= 0 end, Bytes),
      lists:dropwhile(
        fun(X) ->
                X == 0 end,
@@ -89,35 +100,51 @@ get_message(Bytes) ->
     }. 
 
 %Start a client process
-start_client(Sock, Broker) ->
-    {CBroker, _} = client_broker_listener(Sock, Broker),
+start_client(PrivateKey, PublicKey, Sock, Broker) ->
+    {CBroker, _} = client_broker_listener(PrivateKey, PublicKey, Sock, Broker),
     receive
         {'DOWN', _, _, CBroker, disconnect} -> ok;
         {'DOWN', _, _, CBroker, _} -> disconnect(CBroker, Broker)
     end.
 
+%Get the public key from the client
+client_get_key(Sock) ->
+    {ok, Message, []} = client_get_message(Sock, []),
+    [Entry] = public_key:pem_decode(binary:list_to_bin(Message)),
+    public_key:pem_entry_decode(Entry).
+
 %Spawn the client listener and broker
-client_broker_listener(Sock, Broker) ->
+client_broker_listener(PrivateKey, PublicKey, Sock, Broker) ->
     spawn_monitor(
         fun() -> MyPid = self(),
-                 connect(MyPid, Broker),
+                 ClientKey = client_get_key(Sock),
+                 gen_tcp:send(Sock, hex:bin_to_hexstr(PublicKey)++[0]),
+                 connect({MyPid, ClientKey}, Broker),
                  spawn_link(fun() ->
                                     link(MyPid),
-                                    client_listen(Sock, MyPid)
+                                    client_listen(PrivateKey, Sock, MyPid)
                             end),
-                 client_broker(Sock, Broker)
+                 client_broker(ClientKey, Sock, Broker)
         end
     ).
 
 %Listen for a new client connecting
-server_listen(LSock, Broker) ->
+server_listen(PrivateKey, PublicKey, LSock, Broker) ->
     {ok, CSock} = gen_tcp:accept(LSock),
-    spawn(fun() -> start_client(CSock, Broker) end),
-    server_listen(LSock, Broker).
+    spawn(fun() -> start_client(PrivateKey, PublicKey, CSock, Broker) end),
+    server_listen(PrivateKey, PublicKey, LSock, Broker).
+
+%Get the private key from file
+read_key(KeyFile) ->
+    {ok, PemBin} = file:read_file(KeyFile),
+    [Entry]      = public_key:pem_decode(PemBin),
+    public_key:pem_entry_decode(Entry).
 
 %Start the server application
 start(Port) ->
-    Broker      = spawn(fun() -> broker([]) end),
-    {ok, LSock} = gen_tcp:listen(Port, [binary, {packet, 0}, {active, false}]),
-    Listener    = spawn(fun() -> server_listen(LSock, Broker) end),
+    PrivKey      = read_key("rsa_priv.pem"), 
+    {ok, PubKey} = file:read_file("rsa_pub.pem"), 
+    Broker       = spawn(fun() -> broker([]) end),
+    {ok, LSock}  = gen_tcp:listen(Port, [binary, {packet, 0}, {active, false}]),
+    Listener     = spawn(fun() -> server_listen(PrivKey, PubKey, LSock, Broker) end),
     {{broker, Broker}, {listener, Listener}}.

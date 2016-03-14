@@ -1,4 +1,6 @@
 #!/usr/bin/python
+from Crypto.Cipher import PKCS1_v1_5
+from Crypto.PublicKey import RSA 
 import sys
 import json
 import curses
@@ -15,8 +17,44 @@ config_file = open("config", 'r')
 config = json.loads(config_file.read());
 config_file.close()
 
+#Read public key from file
+f = open("rsa_pub.pem", 'r')
+public_key_pem = f.read()
+f.close()
+
+#Read private key from file
+f = open("rsa_priv.pem", 'r')
+private = RSA.importKey(f.read())
+f.close()
+private_key = PKCS1_v1_5.new(private)
+
+server_pub = None
+
+#Encrypt a message using the key
+def encryptWith(message, key):
+    cypherstr = key.encrypt(message)
+    return "\\x"+('\\x'.join(x.encode('hex') for x in cypherstr))
+
+def chunkstring(string, length):
+        return (string[0+i:length+i] for i in range(0, len(string), length))
+
+#Connect to the server
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((config["ServerIP"], config["ServerPort"]))
+
+#Send the key to the server
+s.send(public_key_pem)
+s.send("\0")
+
+recvd = ""
+while True:
+    ss = s.recv(1)
+    ss = ss.decode('Latin-1')
+    if ss == "\0".encode('Latin-1'):
+        server_pub = PKCS1_v1_5.new(RSA.importKey(recvd.decode("string-escape")))
+        break
+    else:
+        recvd = recvd + ss
 
 screen = curses.initscr()
 
@@ -33,7 +71,9 @@ msgS = ""
 
 def sendMsg(msg):
     global s
-    s.send(config["UserName"].encode('Latin-1')+"> ".encode('Latin-1')+msg.encode('Latin-1')+"\0".encode('Latin-1'))
+    global server_pub
+    msg = config["UserName"].encode('Latin-1')+"> ".encode('Latin-1')+msg.encode('Latin-1')
+    s.send(encryptWith(msg, server_pub)+"\0")
 
 def handleInput():
     global name
@@ -70,6 +110,7 @@ def bgRead():
     global prints
     global prints_lock
     global update
+    global private_key
 
     recvd = ""
     while True:
@@ -77,6 +118,7 @@ def bgRead():
         ss = ss.decode('Latin-1')
         if ss == "\0".encode('Latin-1'):
             prints_lock.acquire()
+            recvd = private_key.decrypt(recvd.decode("string-escape"), 0).encode('Latin-1')
             prints = prints + [recvd]
             recvd = ""
             update = True
