@@ -63,7 +63,7 @@ split_n(N, Lst) -> [binary:list_to_bin(take(10, Lst))]++split_n(N, drop(10, Lst)
 client_send(ClientKey, Sock, Msg) -> 
     Messages = lists:map(fun(M) -> encrypt_with(M, ClientKey) end, split_n(10, binary:bin_to_list(Msg))),
     lists:map(fun(M) -> gen_tcp:send(Sock, M++[0]) end, Messages),
-    gen_tcp:send(Sock, encrypt_with([0], ClientKey)++[0]).
+    gen_tcp:send(Sock, encrypt_with(<<0>>, ClientKey)++[0]).
 
 %Get a message from the socket
 client_recv(Msg, Broker) -> Broker ! {fromSock, Msg}.
