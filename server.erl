@@ -50,9 +50,11 @@ encrypt_with(Msg, PublicKey) ->
     hex:bin_to_hexstr(public_key:encrypt_public(Msg, PublicKey)).
 
 take(0, _) -> [];
+take(_, []) -> [];
 take(N, [H|T]) -> [H|take(N-1, T)].
 
 drop(0, Lst) -> Lst;
+drop(_, []) -> [];
 drop(N, [_|T]) -> drop(N-1, T).
 
 split_n(N, Lst) -> [binary:list_to_bin(take(10, Lst))]++split_n(N, drop(10, Lst)).
