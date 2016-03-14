@@ -74,7 +74,7 @@ client_listen_loop(PrivateKey, Sock, CBroker, Lst, Msgs) ->
                            case Message of 
                                 [0] -> client_recv(Msgs, CBroker),
                                        client_listen_loop(PrivateKey, Sock, CBroker, Cont, <<>>);
-                                _   -> client_listen_loop(PrivateKey, Sock, CBroker, Cont, <<Msgs/binary, Message>>)
+                                _   -> client_listen_loop(PrivateKey, Sock, CBroker, Cont, <<Msgs/binary, Message/binary>>)
                             end;
 
         error     -> client_disconnect(CBroker)
