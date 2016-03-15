@@ -12,7 +12,7 @@ broker(Clients)  ->
                              broker([Client|Clients]);
 
         {broadcast, Msg}  -> io:format("Message: ~s~n", [Msg]),
-                             lists:map(fun({Pid, _}) -> Pid ! {send, Msg} end, Clients),
+                             lists:map(fun(Pid) -> Pid ! {send, Msg} end, Clients),
                              broker(Clients)
     end.
 

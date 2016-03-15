@@ -30,7 +30,7 @@ broker(ClientKey, Sock, Broker) ->
 
         {fromSock, Msg} -> server:broadcast(Msg, Broker);
 
-        disconnect      -> server:disconnect({self(), ClientKey}, Broker),
+        disconnect      -> server:disconnect(self(), Broker),
                            exit(disconnect)
 
     end,
@@ -110,7 +110,7 @@ broker_listener(PrivateKey, PublicKey, Sock, Broker) ->
         fun() -> MyPid = self(),
                  ClientKey = get_key(Sock),
                  gen_tcp:send(Sock, hex:bin_to_hexstr(PublicKey)++[0]),
-                 server:connect({MyPid, ClientKey}, Broker),
+                 server:connect(MyPid, Broker),
                  spawn_link(fun() ->
                                     link(MyPid),
                                     listen(PrivateKey, Sock, MyPid)
