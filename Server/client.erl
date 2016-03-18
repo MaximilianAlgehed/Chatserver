@@ -1,6 +1,6 @@
 -module(client).
 -export([start_client/4]).
-%
+
 %Decrypt a message using the private key
 decrypt_with(Msg, PrivateKey) ->
     public_key:decrypt_private(hex:hexstr_to_bin(Msg), PrivateKey).
