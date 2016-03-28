@@ -3,7 +3,7 @@
 
 %Decrypt a message using the private key
 decrypt_with(Msg, PrivateKey) ->
-    public_key:decrypt_private(base4:decode(Msg), PrivateKey).
+    public_key:decrypt_private(base64:decode(Msg), PrivateKey).
 
 %Encrypt a message using the public key
 encrypt_with(Msg, PublicKey) ->
@@ -108,7 +108,7 @@ broker_listener(PrivateKey, PublicKey, Sock, Broker) ->
     spawn_monitor(
         fun() -> MyPid = self(),
                  ClientKey = get_key(Sock),
-                 gen_tcp:send(Sock, base64:decode(PublicKey)++[0]),
+                 gen_tcp:send(Sock, base64:encode(PublicKey)++[0]),
                  server:connect(MyPid, Broker),
                  spawn_link(fun() ->
                                     link(MyPid),
