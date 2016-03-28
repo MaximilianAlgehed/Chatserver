@@ -1,6 +1,7 @@
 #!/usr/bin/python
 from Crypto.Cipher import PKCS1_v1_5
 from Crypto.PublicKey import RSA 
+import base64
 import sys
 import json
 import curses
@@ -33,7 +34,7 @@ server_pub = None
 #Encrypt a message using the key
 def encryptWith(message, key):
     cypherstr = key.encrypt(message)
-    return "\\x"+('\\x'.join(x.encode('hex') for x in cypherstr))
+    return base64.b64encode(cypherstr)
 
 def chunkstring(string, length):
     return (string[0+i:length+i] for i in range(0, len(string), length))
@@ -51,7 +52,7 @@ while True:
     ss = s.recv(1)
     ss = ss.decode('Latin-1')
     if ss == "\0".encode('Latin-1'):
-        server_pub = PKCS1_v1_5.new(RSA.importKey(recvd.decode("string-escape")))
+        server_pub = PKCS1_v1_5.new(RSA.importKey(base64.b64decode(recvd)))
         break
     else:
         recvd = recvd + ss
@@ -119,7 +120,7 @@ def bgRead():
         ss = s.recv(1)
         ss = ss.decode('Latin-1')
         if ss == "\0".encode('Latin-1'):
-            recvd = private_key.decrypt(recvd.decode("string-escape"), 0).encode('Latin-1')
+            recvd = private_key.decrypt(base64.b64decode(recvd)).encode('Latin-1')
             if recvd == "\0".encode('Latin-1'):
                 prints_lock.acquire()
                 prints = prints + [recvds]
