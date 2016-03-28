@@ -38,7 +38,7 @@ broker(ClientKey, Sock, Broker) ->
 %Send a message to the socket
 send(ClientKey, Sock, Msg) -> 
     Messages = lists:map(fun(M) -> encrypt_with(M, ClientKey) end, split_n(10, binary:bin_to_list(Msg))),
-    lists:foreach(fun(M) -> gen_tcp:send(Sock, M++[0]) end, Messages),
+    lists:foreach(fun(M) -> gen_tcp:send(Sock, <<M/binary, 0>>) end, Messages),
     gen_tcp:send(Sock, encrypt_with(<<0>>, ClientKey)++[0]).
 
 %Get a message from the socket
