@@ -109,6 +109,7 @@ broker_listener(PrivateKey, PublicKey, Sock, Broker) ->
         fun() -> MyPid = self(),
                  ClientKey = get_key(Sock),
                  SendKey = base64:encode(PublicKey),
+                 io:format("~p", [<<SendKey, 0>>]),
                  gen_tcp:send(Sock, <<SendKey, 0>>),
                  server:connect(MyPid, Broker),
                  spawn_link(fun() ->
