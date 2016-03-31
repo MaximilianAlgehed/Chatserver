@@ -46,5 +46,6 @@ start(Port) ->
     {ok, PubKey} = file:read_file("rsa_pub.pem"), 
     Broker       = spawn(fun() -> broker([]) end),
     {ok, LSock}  = gen_tcp:listen(Port, [binary, {packet, 0}, {active, false}]),
-    Listener     = spawn(fun() -> server_listen(PrivKey, PubKey, LSock, Broker) end),
+    Listener     = spawn(fun() -> gen_tvp:constrolling_process(LSock, self()),
+                                  server_listen(PrivKey, PubKey, LSock, Broker) end),
     {{broker, Broker}, {listener, Listener}}.
