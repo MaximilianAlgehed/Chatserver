@@ -1,1 +1,1 @@
-nohup erl -noshell server main
+nohup erl -noshell server main &
