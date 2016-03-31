@@ -30,7 +30,7 @@ broadcast(Msg, Broker)    -> Broker ! {broadcast, Msg}.
 server_listen(PrivateKey, PublicKey, LSock, Broker) ->
     case gen_tcp:accept(LSock) of
         {ok, CSock} -> spawn(fun() -> client:start_client(PrivateKey, PublicKey, CSock, Broker) end);
-        {error, Error} -> io:format("Error: ~p", [Error])
+        {error, Error} -> io:format("Error: ~p~n", [Error])
     end,
     server_listen(PrivateKey, PublicKey, LSock, Broker).
 
