@@ -1,6 +1,7 @@
 -module(server).
--export([start/1, connect/2, disconnect/2, broadcast/2]).
+-export([main/0, start/1, connect/2, disconnect/2, broadcast/2]).
 
+main() -> start(5678).
 
 %Broker messages in the chat system
 broker(Clients)  ->
