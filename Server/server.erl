@@ -28,8 +28,10 @@ broadcast(Msg, Broker)    -> Broker ! {broadcast, Msg}.
 
 %Listen for a new client connecting
 server_listen(PrivateKey, PublicKey, LSock, Broker) ->
-    {ok, CSock} = gen_tcp:accept(LSock),
-    spawn(fun() -> client:start_client(PrivateKey, PublicKey, CSock, Broker) end),
+    case gen_tcp:accept(LSock) of
+        {ok, CSock} -> spawn(fun() -> client:start_client(PrivateKey, PublicKey, CSock, Broker) end);
+        _           -> ok
+    end,
     server_listen(PrivateKey, PublicKey, LSock, Broker).
 
 %Get the private key from file
